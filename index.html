@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="ru">
 <head>
@@ -63,7 +64,7 @@ button{color:inherit}
       </div>
       <div id="mapFrame" class="mapframe">
         <div id="mapStage" class="mapstage">
-          <img class="mapimg" src="https://upforme.ru/uploads/001c/7d/92/5/t459359.png" alt="Карта осенней ярмарки">
+          <img class="mapimg" src="https://upforme.ru/uploads/001c/7d/92/5/459359.png" alt="Карта осенней ярмарки">
           <div id="tokens" class="tokens"></div>
         </div>
         <div id="emptyNote" class="emptyNote">Персонажей пока нет — добавьте первого во вкладке слева.</div>
@@ -276,6 +277,7 @@ imageInput.addEventListener("input",renderPreview);nameInput.addEventListener("i
 
 $("#charForm").addEventListener("submit",async e=>{
   e.preventDefault();
+  const form=e.currentTarget;
   const msg=$("#formMsg"),btn=$("#addBtn"); msg.className="error";msg.textContent="";
   const name=nameInput.value.trim(),image=imageInput.value.trim(),npc=$("#charNpc").checked;
   if(!name){msg.textContent="Введите имя.";return;}
@@ -289,7 +291,7 @@ $("#charForm").addEventListener("submit",async e=>{
     await setDoc(doc(db,"fair_maps",MAP_ID,"characters",id),{
       name,image,npc:!!npc,x:jitter(),y:jitter(),owner:auth.currentUser.uid,createdAt:Date.now()
     });
-    e.currentTarget.reset();renderPreview();msg.className="error success";msg.textContent=npc?"НПС добавлен.":"Персонаж добавлен.";
+    form.reset();renderPreview();msg.className="error success";msg.textContent=npc?"НПС добавлен.":"Персонаж добавлен.";
     setTimeout(()=>switchView("map"),350);
   }catch(err){msg.textContent=firebaseMessage(err);}finally{btn.disabled=false;}
 });
@@ -299,11 +301,11 @@ $("#masterLoginBtn").addEventListener("click",()=>{back.classList.add("open");$(
 $("#closeLogin").addEventListener("click",()=>back.classList.remove("open"));
 back.addEventListener("pointerdown",e=>{if(e.target===back)back.classList.remove("open")});
 $("#loginForm").addEventListener("submit",async e=>{
-  e.preventDefault();const msg=$("#loginMsg"),btn=e.currentTarget.querySelector(".submit");msg.textContent="";btn.disabled=true;
+  e.preventDefault();const form=e.currentTarget,msg=$("#loginMsg"),btn=form.querySelector(".submit");msg.textContent="";btn.disabled=true;
   try{
     await signInWithEmailAndPassword(auth,$("#masterEmail").value.trim(),$("#masterPassword").value);
     if(!isMaster()){await signOut(auth);throw new Error("Этот аккаунт не является мастером карты.");}
-    back.classList.remove("open");e.currentTarget.reset();toast("Режим мастера включён");
+    back.classList.remove("open");form.reset();toast("Режим мастера включён");
   }catch(err){msg.textContent=firebaseMessage(err);}finally{btn.disabled=false;}
 });
 $("#masterLogoutBtn").addEventListener("click",async()=>{
