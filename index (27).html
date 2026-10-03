@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Интерактивная карта ярмарки</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#15120f;--panel:#211b16;--panel2:#2b231c;--line:#4c3c2c;--text:#f6ead7;
+  --muted:#b9a894;--accent:#d49b4a;--accent2:#8f5e2b;--danger:#cf6a5f;--ok:#79a77a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input{font:inherit}
+button{color:inherit}
+.app{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh}
+.sidebar{background:linear-gradient(180deg,#211a14,#17130f);border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:14px}
+.brand{padding:4px 6px 14px;border-bottom:1px solid #3b3027}
+.brand strong{display:block;font:700 20px/1.1 Georgia,serif;letter-spacing:.02em}.brand span{display:block;margin-top:6px;color:var(--muted);font-size:12px}
+.tabs{display:grid;gap:8px}.tab{border:1px solid #4a3b2d;background:#251e18;border-radius:10px;padding:11px 12px;text-align:left;cursor:pointer;min-height:44px}.tab.active{border-color:#8c6235;background:#38291d;box-shadow:inset 3px 0 0 var(--accent)}
+.sidefill{flex:1}.rolebox{border-top:1px solid #3b3027;padding-top:12px}.status{font-size:12px;color:var(--muted);margin-bottom:8px}.status.master{color:#d7bd83}.ghostbtn{width:100%;border:1px solid #4a3b2d;background:#201a16;border-radius:9px;padding:9px 10px;cursor:pointer}.ghostbtn:hover{background:#2b221b}
+.main{min-width:0;padding:18px}.view{display:none}.view.active{display:block}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.toolbar .spacer{flex:1}.toolbtn{border:1px solid #5c4936;background:#281f18;border-radius:9px;min-width:42px;min-height:42px;padding:8px 12px;cursor:pointer}.toolbtn:hover{background:#35281e}.hint{color:var(--muted);font-size:12px}
+.mapframe{position:relative;overflow:hidden;border:1px solid #4b3a2c;border-radius:14px;background:#0c0b09;min-height:520px;touch-action:none;user-select:none}
+.mapstage{position:absolute;left:0;top:0;width:1200px;height:800px;transform-origin:0 0;will-change:transform}.mapimg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block;pointer-events:none}.tokens{position:absolute;inset:0}
+.token{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:transparent;padding:0;cursor:grab;touch-action:none;z-index:3;min-width:76px}.token:active{cursor:grabbing}.token.locked{cursor:not-allowed}.avatar{width:54px;height:54px;border-radius:50%;object-fit:cover;background:#33271f;border:3px solid #f0dfc3;box-shadow:0 2px 10px #0009}.token.npc .avatar{border-color:#c6665c;box-shadow:0 0 0 2px #5c1e1a,0 2px 10px #0009}.token.selected .avatar{outline:3px solid #d8a755;outline-offset:3px}.label{max-width:150px;padding:3px 7px;border-radius:7px;background:#17110de8;border:1px solid #6c5036;color:#fff7ea;font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 5px #0008}.npctag{font-size:9px;letter-spacing:.12em;color:#ffd7cf;background:#6a251f;padding:2px 5px;border-radius:999px;margin-top:-2px}
+.emptyNote{position:absolute;left:50%;top:18px;transform:translateX(-50%);background:#17120de8;border:1px solid #59442f;border-radius:8px;padding:8px 11px;font-size:12px;color:#d8c5ae;z-index:4;pointer-events:none}
+.panel{max-width:640px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}.panel h1{margin:0 0 4px;font:700 26px/1.15 Georgia,serif}.panel p{margin:0 0 18px;color:var(--muted)}
+.form{display:grid;gap:14px}.form label{display:grid;gap:6px;font-weight:600}.form input[type=text],.form input[type=url],.form input[type=email],.form input[type=password]{width:100%;border:1px solid #5a4736;border-radius:9px;background:#17130f;color:var(--text);padding:11px 12px;outline:none}.form input:focus{border-color:#b27a3c;box-shadow:0 0 0 3px #b27a3c22}.switch{display:flex!important;grid-template-columns:auto 1fr!important;align-items:center;gap:10px!important;font-weight:500!important}.switch input{width:20px;height:20px}.submit{border:1px solid #a36d34;background:#7a4b22;color:#fff1df;border-radius:10px;padding:11px 14px;cursor:pointer;font-weight:700;min-height:44px}.submit:hover{background:#915a28}.submit:disabled{opacity:.55;cursor:wait}.error{min-height:20px;color:#ef9389;font-size:13px}.success{color:#9fca9f}
+.preview{display:flex;align-items:center;gap:12px;border:1px dashed #5e4a37;border-radius:10px;padding:12px;background:#1b1612}.preview img{width:58px;height:58px;border-radius:50%;object-fit:cover;background:#2a211b;border:2px solid #ead5b5}.preview .fallback{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#3a2c21;border:2px solid #ead5b5;font-size:22px;font-weight:800}.preview small{color:var(--muted)}
+.modalback{position:fixed;inset:0;background:#0009;display:none;place-items:center;padding:20px;z-index:30}.modalback.open{display:grid}.modal{width:min(420px,100%);background:#211a15;border:1px solid #5a4432;border-radius:14px;padding:18px}.modal h2{margin:0 0 12px}.actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}.cancel{border:1px solid #594737;background:#251d17;border-radius:9px;padding:10px 12px;cursor:pointer}
+.toast{position:fixed;right:18px;bottom:18px;max-width:min(420px,calc(100vw - 36px));background:#1d1712;border:1px solid #634a34;border-radius:10px;padding:10px 12px;box-shadow:0 8px 26px #0008;opacity:0;transform:translateY(8px);pointer-events:none;transition:.18s;z-index:50}.toast.show{opacity:1;transform:none}
+@media(max-width:760px){
+  .app{grid-template-columns:1fr;min-height:0}.sidebar{border-right:0;border-bottom:1px solid var(--line);padding:10px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.brand{border:0;padding:2px 4px}.brand span{display:none}.tabs{grid-column:1/-1;grid-template-columns:1fr 1fr}.tab{text-align:center}.sidefill{display:none}.rolebox{grid-column:1/-1;border-top:0;padding-top:0;display:flex;align-items:center;gap:8px}.rolebox .status{margin:0;flex:1}.ghostbtn{width:auto}.main{padding:10px}.mapframe{min-height:470px}.hint{width:100%}.panel{max-width:none;padding:16px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><strong>Осенняя ярмарка</strong><span>общая интерактивная карта</span></div>
+    <nav class="tabs" aria-label="Навигация">
+      <button class="tab active" type="button" data-view="map">Карта</button>
+      <button class="tab" type="button" data-view="add">Добавить персонажа</button>
+    </nav>
+    <div class="sidefill"></div>
+    <div class="rolebox">
+      <div id="roleStatus" class="status">Подключение…</div>
+      <button id="masterLoginBtn" class="ghostbtn" type="button">Войти как мастер</button>
+      <button id="masterLogoutBtn" class="ghostbtn" type="button" hidden>Выйти из режима мастера</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section id="mapView" class="view active" aria-label="Карта">
+      <div class="toolbar">
+        <button id="zoomOut" class="toolbtn" type="button" aria-label="Уменьшить">−</button>
+        <button id="zoomIn" class="toolbtn" type="button" aria-label="Увеличить">+</button>
+        <button id="fitMap" class="toolbtn" type="button">Вписать</button>
+        <span class="spacer"></span>
+        <span id="mapCount" class="hint">0 персонажей</span>
+        <span class="hint">Пустое место — перетащить карту · колёсико — масштаб</span>
+      </div>
+      <div id="mapFrame" class="mapframe">
+        <div id="mapStage" class="mapstage">
+          <img class="mapimg" src="https://upforme.ru/uploads/001c/7d/92/5/t459359.png" alt="Карта осенней ярмарки">
+          <div id="tokens" class="tokens"></div>
+        </div>
+        <div id="emptyNote" class="emptyNote">Персонажей пока нет — добавьте первого во вкладке слева.</div>
+      </div>
+    </section>
+
+    <section id="addView" class="view" aria-label="Добавить персонажа">
+      <div class="panel">
+        <h1>Добавить персонажа</h1>
+        <p>Обычного персонажа может добавить любой участник. НПС доступен только мастеру.</p>
+        <form id="charForm" class="form">
+          <label>Имя
+            <input id="charName" type="text" maxlength="60" autocomplete="off" required placeholder="Например: Regulus Black">
+          </label>
+          <label>Ссылка на картинку
+            <input id="charImage" type="url" maxlength="2000" required placeholder="https://.../avatar.png">
+          </label>
+          <label id="npcRow" class="switch" hidden>
+            <input id="charNpc" type="checkbox">
+            <span>Добавить как НПС</span>
+          </label>
+          <div id="preview" class="preview"><div class="fallback">?</div><div><b>Предпросмотр фишки</b><br><small>Картинка будет круглой на карте.</small></div></div>
+          <div id="formMsg" class="error" aria-live="polite"></div>
+          <button id="addBtn" class="submit" type="submit">Добавить на карту</button>
+        </form>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="loginBack" class="modalback" role="presentation">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <h2 id="loginTitle">Вход мастера</h2>
+    <form id="loginForm" class="form">
+      <label>Email<input id="masterEmail" type="email" autocomplete="username" required></label>
+      <label>Пароль<input id="masterPassword" type="password" autocomplete="current-password" required></label>
+      <div id="loginMsg" class="error" aria-live="polite"></div>
+      <div class="actions"><button id="closeLogin" class="cancel" type="button">Отмена</button><button class="submit" type="submit">Войти</button></div>
+    </form>
+  </div>
+</div>
+<div id="toast" class="toast" aria-live="polite"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDbMYr99XAJWtpVBzU2WBgham-o_RykEK8",
+  authDomain: "dnd-party-d2291.firebaseapp.com",
+  projectId: "dnd-party-d2291",
+  storageBucket: "dnd-party-d2291.firebasestorage.app",
+  messagingSenderId: "272197003899",
+  appId: "1:272197003899:web:8a524f19176aad729b90de"
+};
+const MASTER_UID = "j38gO3G1YlRgnG7Jg3gycK8QeoE3";
+const MAP_ID = "main";
+const app = initializeApp(firebaseConfig, "autumn-fair-map");
+const auth = getAuth(app);
+const db = getFirestore(app);
+const charsRef = collection(db, "fair_maps", MAP_ID, "characters");
+const $ = s => document.querySelector(s);
+
+let chars = new Map();
+let unsubscribe = null;
+let drag = null;
+let panX = 0, panY = 0, zoom = 1;
+let toastTimer = 0;
+let selected = null;
+const STAGE_W = 1200, STAGE_H = 800;
+
+function isMaster(){ return auth.currentUser?.uid === MASTER_UID; }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function esc(s=""){ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2600); }
+function firebaseMessage(err){
+  if(err?.code === "permission-denied") return "Нет доступа. Проверьте правила Firestore.";
+  if(err?.code === "auth/operation-not-allowed") return "В Firebase нужно включить Anonymous Authentication.";
+  if(["auth/invalid-credential","auth/wrong-password","auth/user-not-found"].includes(err?.code)) return "Неверный email или пароль мастера.";
+  return err?.message || "Ошибка Firebase";
+}
+
+function switchView(name){
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.view===name));
+  $("#mapView").classList.toggle("active",name==="map");
+  $("#addView").classList.toggle("active",name==="add");
+  if(name==="map") requestAnimationFrame(fitMap);
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
+
+function updateRoleUI(){
+  const master=isMaster();
+  const status=$("#roleStatus");
+  status.textContent=master?"Мастер · синхронизация включена":"Игрок · синхронизация включена";
+  status.classList.toggle("master",master);
+  $("#masterLoginBtn").hidden=master;
+  $("#masterLogoutBtn").hidden=!master;
+  $("#npcRow").hidden=!master;
+  if(!master) $("#charNpc").checked=false;
+  renderTokens();
+}
+
+async function ensureAnonymous(){
+  if(auth.currentUser) return;
+  try{ await signInAnonymously(auth); }
+  catch(err){ $("#roleStatus").textContent=firebaseMessage(err); }
+}
+
+onAuthStateChanged(auth, async user=>{
+  if(!user){ await ensureAnonymous(); return; }
+  updateRoleUI();
+  if(unsubscribe) unsubscribe();
+  unsubscribe=onSnapshot(charsRef,snap=>{
+    chars.clear();
+    snap.forEach(d=>chars.set(d.id,{id:d.id,...d.data()}));
+    renderTokens();
+  },err=>toast(firebaseMessage(err)));
+});
+
+function renderTokens(){
+  const list=[...chars.values()].sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  $("#emptyNote").hidden=list.length>0;
+  const pc=list.filter(c=>!c.npc).length, npc=list.length-pc;
+  $("#mapCount").textContent=`${pc} персонажей${npc?` · ${npc} НПС`:""}`;
+  $("#tokens").innerHTML=list.map(c=>{
+    const locked=c.npc&&!isMaster();
+    return `<button type="button" class="token ${c.npc?"npc":""} ${locked?"locked":""} ${selected===c.id?"selected":""}" data-id="${esc(c.id)}" style="left:${clamp(Number(c.x)||.5,.02,.98)*100}%;top:${clamp(Number(c.y)||.5,.02,.98)*100}%" aria-label="${esc(c.name)}${c.npc?", НПС":""}">
+      <img class="avatar" src="${esc(c.image)}" alt="" draggable="false">
+      <span class="label">${esc(c.name)}</span>
+      ${c.npc?'<span class="npctag">NPC</span>':''}
+    </button>`;
+  }).join("");
+  document.querySelectorAll(".avatar").forEach(img=>img.addEventListener("error",()=>{img.style.visibility="hidden"},{once:true}));
+}
+
+function transform(){ $("#mapStage").style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`; }
+function fitMap(){
+  const f=$("#mapFrame");
+  const w=f.clientWidth||900,h=f.clientHeight||520;
+  zoom=Math.min(w/STAGE_W,h/STAGE_H)*.98;
+  panX=(w-STAGE_W*zoom)/2;
+  panY=(h-STAGE_H*zoom)/2;
+  transform();
+}
+function zoomAt(factor,cx,cy){
+  const next=clamp(zoom*factor,.18,3.5);
+  panX=cx-(cx-panX)*(next/zoom);
+  panY=cy-(cy-panY)*(next/zoom);
+  zoom=next; transform();
+}
+$("#zoomIn").addEventListener("click",()=>{const r=$("#mapFrame").getBoundingClientRect();zoomAt(1.2,r.width/2,r.height/2)});
+$("#zoomOut").addEventListener("click",()=>{const r=$("#mapFrame").getBoundingClientRect();zoomAt(1/1.2,r.width/2,r.height/2)});
+$("#fitMap").addEventListener("click",fitMap);
+$("#mapFrame").addEventListener("wheel",e=>{
+  e.preventDefault(); const r=e.currentTarget.getBoundingClientRect();
+  zoomAt(e.deltaY<0?1.1:1/1.1,e.clientX-r.left,e.clientY-r.top);
+},{passive:false});
+
+function eventToMap(e){
+  const r=$("#mapFrame").getBoundingClientRect();
+  return {x:(e.clientX-r.left-panX)/zoom,y:(e.clientY-r.top-panY)/zoom};
+}
+$("#mapFrame").addEventListener("pointerdown",e=>{
+  if(e.button!==0) return;
+  const token=e.target.closest(".token");
+  if(token){
+    const c=chars.get(token.dataset.id); if(!c) return;
+    selected=c.id; renderTokens();
+    if(c.npc&&!isMaster()){toast("НПС может двигать только мастер");return;}
+    const p=eventToMap(e);
+    drag={kind:"token",id:c.id,el:document.querySelector(`.token[data-id="${CSS.escape(c.id)}"]`),offsetX:p.x-(Number(c.x)||.5)*STAGE_W,offsetY:p.y-(Number(c.y)||.5)*STAGE_H,x:Number(c.x)||.5,y:Number(c.y)||.5,moved:false};
+  }else{
+    drag={kind:"pan",startX:e.clientX,startY:e.clientY,x:panX,y:panY};
+  }
+  e.currentTarget.setPointerCapture(e.pointerId);
+});
+$("#mapFrame").addEventListener("pointermove",e=>{
+  if(!drag)return;
+  if(drag.kind==="pan"){
+    panX=drag.x+e.clientX-drag.startX; panY=drag.y+e.clientY-drag.startY; transform(); return;
+  }
+  const p=eventToMap(e);
+  drag.x=clamp((p.x-drag.offsetX)/STAGE_W,.02,.98);
+  drag.y=clamp((p.y-drag.offsetY)/STAGE_H,.02,.98);
+  drag.moved=true;
+  if(drag.el){drag.el.style.left=(drag.x*100)+"%";drag.el.style.top=(drag.y*100)+"%";}
+});
+async function finishDrag(e){
+  const d=drag; drag=null;
+  if(e?.pointerId!=null && $("#mapFrame").hasPointerCapture?.(e.pointerId)) $("#mapFrame").releasePointerCapture(e.pointerId);
+  if(!d||d.kind!=="token"||!d.moved)return;
+  try{ await updateDoc(doc(db,"fair_maps",MAP_ID,"characters",d.id),{x:d.x,y:d.y}); }
+  catch(err){toast(firebaseMessage(err));renderTokens();}
+}
+$("#mapFrame").addEventListener("pointerup",finishDrag);
+$("#mapFrame").addEventListener("pointercancel",()=>{drag=null;renderTokens()});
+window.addEventListener("resize",()=>{if($("#mapView").classList.contains("active")&&!drag)fitMap()});
+
+const imageInput=$("#charImage"),nameInput=$("#charName");
+function renderPreview(){
+  const url=imageInput.value.trim(),name=nameInput.value.trim();
+  const safeName=esc(name||"Персонаж");
+  $("#preview").innerHTML=url
+    ? `<img src="${esc(url)}" alt=""><div><b>${safeName}</b><br><small>Так будет выглядеть фишка.</small></div>`
+    : `<div class="fallback">${esc((name||"?").slice(0,1).toUpperCase())}</div><div><b>${safeName}</b><br><small>Добавьте ссылку на картинку.</small></div>`;
+  const img=$("#preview img"); if(img) img.addEventListener("error",()=>{$("#formMsg").textContent="Картинка по этой ссылке не загрузилась. Проверьте прямую HTTPS-ссылку."},{once:true});
+}
+imageInput.addEventListener("input",renderPreview);nameInput.addEventListener("input",renderPreview);
+
+$("#charForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const msg=$("#formMsg"),btn=$("#addBtn"); msg.className="error";msg.textContent="";
+  const name=nameInput.value.trim(),image=imageInput.value.trim(),npc=$("#charNpc").checked;
+  if(!name){msg.textContent="Введите имя.";return;}
+  try{const u=new URL(image);if(u.protocol!=="https:")throw 0;}catch{msg.textContent="Нужна прямая HTTPS-ссылка на картинку.";return;}
+  if(npc&&!isMaster()){msg.textContent="НПС может добавлять только мастер.";return;}
+  if(!auth.currentUser){msg.textContent="Подождите подключения к Firebase.";return;}
+  btn.disabled=true;
+  try{
+    const id=crypto.randomUUID();
+    const jitter=()=>.46+Math.random()*.08;
+    await setDoc(doc(db,"fair_maps",MAP_ID,"characters",id),{
+      name,image,npc:!!npc,x:jitter(),y:jitter(),owner:auth.currentUser.uid,createdAt:Date.now()
+    });
+    e.currentTarget.reset();renderPreview();msg.className="error success";msg.textContent=npc?"НПС добавлен.":"Персонаж добавлен.";
+    setTimeout(()=>switchView("map"),350);
+  }catch(err){msg.textContent=firebaseMessage(err);}finally{btn.disabled=false;}
+});
+
+const back=$("#loginBack");
+$("#masterLoginBtn").addEventListener("click",()=>{back.classList.add("open");$("#masterEmail").focus()});
+$("#closeLogin").addEventListener("click",()=>back.classList.remove("open"));
+back.addEventListener("pointerdown",e=>{if(e.target===back)back.classList.remove("open")});
+$("#loginForm").addEventListener("submit",async e=>{
+  e.preventDefault();const msg=$("#loginMsg"),btn=e.currentTarget.querySelector(".submit");msg.textContent="";btn.disabled=true;
+  try{
+    await signInWithEmailAndPassword(auth,$("#masterEmail").value.trim(),$("#masterPassword").value);
+    if(!isMaster()){await signOut(auth);throw new Error("Этот аккаунт не является мастером карты.");}
+    back.classList.remove("open");e.currentTarget.reset();toast("Режим мастера включён");
+  }catch(err){msg.textContent=firebaseMessage(err);}finally{btn.disabled=false;}
+});
+$("#masterLogoutBtn").addEventListener("click",async()=>{
+  try{await signOut(auth);await ensureAnonymous();toast("Режим игрока включён");}catch(err){toast(firebaseMessage(err));}
+});
+
+renderPreview();
+requestAnimationFrame(fitMap);
+</script>
+</body>
+</html>
